@@ -1,9 +1,11 @@
+# app.R
 library(shiny)
 library(shinydashboard)
 
-
+# Source required files
 source("R/modules/recommendation_module/recommendation_ui.R")
 source("R/modules/recommendation_module/recommendation_server.R")
+source("R/global.R")  # Ensure that this is sourced before calling the server functions
 
 ui <- dashboardPage(
     dashboardHeader(title = "Movie Analysis Dashboard"),
@@ -11,7 +13,7 @@ ui <- dashboardPage(
         sidebarMenu(
             menuItem("Home", tabName = "home", icon = icon("home")),
             menuItem("Recommendations", tabName = "recommendations", icon = icon("film")),
-            menuItem("Visualizations", tabName = "visualizations", icon = icon("bar-chart-o"))
+            menuItem("Visualizations", tabName = "visualizations", icon = icon("chart-bar"))
         )
     ),
     dashboardBody(
@@ -22,11 +24,9 @@ ui <- dashboardPage(
                     actionButton("go_to_vis", "Go to Visualizations")
             ),
             tabItem(tabName = "recommendations",
-                    # Include your recommendations UI here or call a module UI function
                     recommendationUI("recommendation_mod")
             ),
             tabItem(tabName = "visualizations",
-                    # Include your visualizations UI here or call a module UI function
                     h2("Visualizations Page")
             )
         )
@@ -43,9 +43,8 @@ server <- function(input, output, session) {
         updateTabItems(session, "sidebar", "visualizations")
     })
     
-    # Server logic for each page content would go here
-    
-    recommendationServer("recommendation_mod")
+    # Pass the Spark dataframe to the recommendation server module
+    recommendationServer("recommendation_mod", sc)
 }
 
-shinyApp(ui, server)
+shinyApp(ui = ui, server = server)
