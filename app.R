@@ -1,8 +1,6 @@
-# app.R
 library(shiny)
 library(shinydashboard)
 
-# Source required files
 source("R/modules/recommendation_module/recommendation_ui.R")
 source("R/modules/recommendation_module/recommendation_server.R")
 source("R/global.R")  # Ensure that this is sourced before calling the server functions
@@ -17,6 +15,48 @@ ui <- dashboardPage(
         )
     ),
     dashboardBody(
+        tags$head(
+            tags$link(rel="preconnect", href="https://fonts.googleapis.com"),
+            tags$link(rel="preconnect", href="https://fonts.gstatic.com", crossorigin="anonymous"),
+            tags$link(href="https://fonts.googleapis.com/css2?family=Reddit+Sans:ital,wght@0,200..900;1,200..900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap", rel="stylesheet"),
+            tags$style(HTML("
+                /* Entire navbar styling */
+                .main-header {
+                    font-family: 'Reddit Sans', sans-serif !important;
+                    background-color: white !important;
+                    border-bottom: 1px solid grey !important;
+                }
+                
+                .skin-blue .main-header .navbar {
+                background-color: #eee;
+                }
+                .skin-blue .main-header .logo {
+    background-color: #eee;
+    color: black;
+                }
+
+.skin-blue .main-header .logo:hover {
+    background-color: #eee;
+}
+
+                /* Navbar links and hamburger icon styling */
+                .main-header .navbar .sidebar-toggle,
+                .main-header .navbar .navbar-custom-menu a {
+                    color: black !important; /* Change text and icon color to black */
+                }
+
+                /* Hover effect for hamburger icon */
+                .main-header .navbar .sidebar-toggle:hover {
+                    background-color: #eee !important; /* Light grey background on hover */
+                }
+
+                /* Apply Roboto font to the rest of the dashboard */
+                body, .content-wrapper {
+                    font-family: 'Roboto', sans-serif !important;
+                    background-color: white !important;
+                }
+            "))
+        ),
         tabItems(
             tabItem(tabName = "home",
                     h2("Welcome to the Movie Analysis Dashboard"),
@@ -43,7 +83,6 @@ server <- function(input, output, session) {
         updateTabItems(session, "sidebar", "visualizations")
     })
     
-    # Pass the Spark dataframe to the recommendation server module
     recommendationServer("recommendation_mod", sc)
 }
 

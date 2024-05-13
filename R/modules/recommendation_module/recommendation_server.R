@@ -1,6 +1,12 @@
+library(shiny)
+library(sparklyr)
+library(dplyr)
+
 source("R/modules/recommendation_module/recommendation_helper.R")
 
 
+
+# Server function
 recommendationServer <- function(id, sc) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -13,12 +19,12 @@ recommendationServer <- function(id, sc) {
         pattern <- paste0("(?i)", input_text)
         query <- sprintf("SELECT original_title FROM movie_titles WHERE original_title RLIKE '%s'", pattern)
         suggestions <- sparklyr::sdf_sql(sc, query) %>% collect()
+        
         output$dynamic_suggestions <- renderUI({
           if (nrow(suggestions) > 0) {
             tagList(
               div(
                 style = "margin-bottom: 10px; padding: 5px; background-color: #f9f9f9; border: 1px solid #ccc; border-radius: 5px;",
-                strong("Suggestions:"),
                 tags$ul(
                   lapply(suggestions$original_title, function(title) {
                     tags$li(
@@ -55,25 +61,15 @@ recommendationServer <- function(id, sc) {
           selected_id <- matches$id[1]
           similar_movies <- ml_recommend(loaded_als_model$stages[[2]], type = "item", selected_id)
           api_key <- "31b50f0683d817c0be2dc5e17dd47e2c"
-          print(similar_movies)
+          
           num_rows <- sdf_nrow(similar_movies)
-          print(num_rows)
+          similar_movies_limited <- head(similar_movies, 10)
           
-          similar_movies_limited <- head(similar_movies, 20)
-          print(similar_movies_limited)
-          
-          
-          # Now, join this limited DataFrame with your movie titles information
           similar_movies_df <- similar_movies_limited %>%
             left_join(movie_titles_df, by = c("movieId" = "id")) %>%
             collect()
-          print(similar_movies_df)
           
           similar_movies_df$poster_url <- sapply(similar_movies_df$imdb_id, get_tmdb_id_from_imdb_id, api_key)
-          print(similar_movies_df)
-          
-          # Apply the get_movie_poster_url function after the data is in R
-          
           
           output$movie_cards <- renderUI({
             fluidRow(
@@ -82,17 +78,27 @@ recommendationServer <- function(id, sc) {
                 column(4,
                        div(
                          class = "card",
-                         style = "background-color: #ffcccb; width: 18rem; margin-bottom: 20px;",
+                         style = " width: 18rem; margin-bottom: 20px;",
                          div(class = "card-body",
-                             img(src = movie$poster_url, style = "height:200px;"),  # Display the poster
+                             img(src = movie$poster_url, style = "height:250px;width:100%"),  # Display the poster
                              h5(class = "card-title", movie$original_title),
-                             
-                             a(href = "#", class = "btn btn-primary", "More Info")
+                             actionButton(ns(paste0("info_", movie$movieId)), "More Info")
                          )
                        )
                 )
               })
             )
+          })
+          
+          lapply(similar_movies_df$movieId, function(movie_id) {
+            observeEvent(input[[ns(paste0("info_", movie_id))]], {
+              selected_movie <- similar_movies_df[similar_movies_df$movieId == movie_id, ]
+              showModal(modalDialog(
+                title = sprintf("More Information on %s", selected_movie$original_title),
+                p("Here is more detailed information about the movie."),
+                footer = modalButton("Close")
+              ))
+            })
           })
           
         } else {
@@ -121,5 +127,17 @@ recommendationServer <- function(id, sc) {
       
       output$dynamic_suggestions <- renderUI({ div() })  # Clear suggestions after submission
     })
+    
   })
 }
+
+# Full Shiny app
+shinyApp(
+  ui = fluidPage(
+    recommendationUI("recommendation_module")
+  ),
+  server = function(input, output, session) {
+    sc <- spark_connect(master = "local")
+    recommendationServer("recommendation_module", sc)
+  }
+)
